@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -25,14 +26,55 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: renderAppBar(),
-      body: Column(
-        children: [
-          _CustomGoogleMap(initialPosition: initialPosition),
-          _ChoolCheckButton(),
-        ],
+      body: FutureBuilder( //
+        future: checkPermission(), //퓨처함수 넣을수 있음, 변화가 있을때, 빌더를 실행해서 다시 그려줌
+        builder: (BuildContext context, AsyncSnapshot snapshot){
+          if(snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+
+          if(snapshot.data == '위치 권한이 허가되었습니다.'){
+            return Column(
+              children: [
+                _CustomGoogleMap(initialPosition: initialPosition),
+                _ChoolCheckButton(),
+              ],
+            );
+          }
+
+          return Center(
+            child: Text(snapshot.data),
+          );
+          print(snapshot.data);
+          print(snapshot.connectionState); //none, waiting, active, done
+
+        },
       ),
     );
   }
+
+  Future<String> checkPermission() async {
+    final isLocationEnabled = await Geolocator.isLocationServiceEnabled();
+    if(!isLocationEnabled) {
+      return '위치 서비스를 활성화 해주세요';
+    }
+    LocationPermission checkPermission = await Geolocator.checkPermission(); //denied, denied forever, use, always
+    if(checkPermission == LocationPermission.denied) {
+      checkPermission = await Geolocator.requestPermission(); //리퀘스트한 값이 저장이됨
+      if(checkPermission == LocationPermission.denied) {
+        return '위치 권한을 허가해주세요 ';
+      }
+    }
+    if(checkPermission == LocationPermission.deniedForever) {
+      return '앱의 위치 권한을 세팅에서 허가해주세요';
+    }
+
+    return '위치 권한이 허가되었습니다.';
+  }
+
+
+
+
   AppBar renderAppBar() {
     return  AppBar(
       title: Center(
